@@ -1,0 +1,71 @@
+---
+- hosts: all
+  remote_user: root
+  handlers:
+  - name: Restart server
+    command: 'sleep 1 && shutdown -r now "Reboot triggered by Ansible" && sleep 1'
+    async: 1
+    poll: 0
+    ignore_errors: true
+    become: true
+
+  - name: Wait for server to restart
+    wait_for:    
+      host={{ inventory_hostname }}
+      port=22
+      delay=10
+        
+  tasks:
+  - selinux:
+      state: disabled
+  - name: update the system
+    yum:
+      name: "*"
+      state: latest
+    notify:
+    - Restart server
+    - Wait for server to restart
+   
+  - name: Ensure vim, screen, docker are present
+    yum:
+      name: vim, screen, docker, git
+      state: present
+  - name: Enable and start docker service
+    service:
+      name: docker
+      enabled: yes
+      state: started
+  - selinux:
+      state: disabled
+  - name: Add repository
+    yum_repository:
+      name: Kubernetes
+      description: Kubernetes Repo
+      baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+      gpgcheck: no
+  - name: Ensure kubelet kubeadm kubectl are present
+    yum:
+      name: kubelet, kubeadm, kubectl
+      state: present
+  - name: Enable kubelet services
+    service:
+      name: kubelet
+      enabled: yes
+      state: started
+  - name: copy systectl file
+    copy:
+      src: /root/playbooks/update_systemctl.sh
+      dest: /root/update_systemctl.sh
+      owner: root
+      group: root
+      mode: 0755
+  - name: turn off swap
+    shell: swapoff -a
+  - name: apply iptables fix
+    command: sysctl net.bridge.bridge-nf-call-iptables=1
+  - name: restart systemctl 
+    command: sysctl --system
+  - name: restart kubelets to refresh
+    service:
+      name: kubelet
+      state: restarted
