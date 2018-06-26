@@ -45,7 +45,7 @@
       gpgcheck: no
   - name: Ensure kubelet kubeadm kubectl are present
     yum:
-      name: kubelet, kubeadm, kubectl
+      name: kubelet, kubeadm, kubectl, kubernetes-cni
       state: present
   - name: Enable kubelet services
     service:
@@ -56,6 +56,20 @@
     copy:
       src: /root/playbooks/update_systemctl.sh
       dest: /root/update_systemctl.sh
+      owner: root
+      group: root
+      mode: 0755
+  - name: copy cfssl_linux-amd64
+    copy:
+      src: /root/cfssl_linux-amd64
+      dest: /usr/local/bin/cfssl
+      owner: root
+      group: root
+      mode: 0755
+  - name: copy cfssljson_linux-amd64
+    copy:
+      src: /root/cfssljson_linux-amd64
+      dest: /usr/local/bin/cfssljson
       owner: root
       group: root
       mode: 0755
