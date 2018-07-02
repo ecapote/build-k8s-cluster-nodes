@@ -1,0 +1,45 @@
+---
+- hosts: all
+  remote_user: root
+  handlers:
+  - name: Restart server
+    command: 'sleep 1 && shutdown -r now "Reboot triggered by Ansible" && sleep 1'
+    async: 1
+    poll: 0
+    ignore_errors: true
+    become: true
+
+  - name: Wait for server to restart
+    wait_for:    
+      host={{ inventory_hostname }}
+      port=22
+      delay=10
+        
+  tasks:
+  - name: update the system
+    apt:
+      name: "*"
+      state: latest
+      force_apt_get: yes
+    notify:
+    - Restart server
+    - Wait for server to restart
+   
+  - name: Ensure vim, screen, apt-transport-https
+    apt:
+      name: vim, screen, apt-transport-https, git, ca-certificates, curl, software-properties-common
+      state: present
+  - name: Add Docker's official GPG key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+  - name: Add repository
+    apt_repository:
+      name: Add Docker repo
+      description: Docker Repo
+      baseurl: https://download.docker.com/linux/ubuntu/dists/xenial/stable/
+      gpgcheck: no
+  - name: Install docker
+    apt:
+      name: docker-ce=17.03.2~ce-0~ubuntu-xenial
+      state: present
